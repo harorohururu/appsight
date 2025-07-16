@@ -1,0 +1,43 @@
+const touristData = [
+  {
+    form_id: 1,
+    form_date: '2025-07-01',
+    landmark_info: 1,
+    allocation: 'Lipa Residency',
+    nationality: 'Philippines',
+    stay_duration: 3,
+    visit_date: '2025-07-01',
+    num_male: 2,
+    num_female: 3,
+    num_foreign_male: 0,
+    num_foreign_female: 0,
+  },
+  {
+    form_id: 2,
+    form_date: '2025-07-01',
+    landmark_info: 2,
+    allocation: 'Other Province with Foreign',
+    nationality: 'Philippines',
+    stay_duration: 1,
+    visit_date: '2025-07-01',
+    num_male: 1,
+    num_female: 2,
+    num_foreign_male: 1,
+    num_foreign_female: 1,
+  },
+  {
+    form_id: 3,
+    form_date: '2025-07-02',
+    landmark_info: 3,
+    allocation: 'Foreign Residency',
+    nationality: 'United States',
+    stay_duration: 5,
+    visit_date: '2025-07-02',
+    num_male: 0,
+    num_female: 0,
+    num_foreign_male: 2,
+    num_foreign_female: 2,
+  },
+];
+
+export default touristData;
