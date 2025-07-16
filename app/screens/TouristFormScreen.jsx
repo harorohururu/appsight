@@ -9,6 +9,7 @@ import { useNavigation } from '../context/NavigationContext';
 import countries from '../data/countries';
 import landmarks from '../data/landmarks';
 import landmarkTypes from '../data/landmarkTypes';
+import AlertModal from '../modals/AlertModal';
 import PrivacyConsentModal from '../modals/PrivacyConsentModal';
 
 const TouristFormScreen = () => {
@@ -28,6 +29,7 @@ const TouristFormScreen = () => {
   const [touched, setTouched] = useState({});
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
 
   const allocationRef = useRef(null);
   const nationalityRef = useRef(null);
@@ -62,7 +64,10 @@ const TouristFormScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setAlertVisible(true);
+      return;
+    }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -76,11 +81,18 @@ const TouristFormScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
+      <AlertModal
+        visible={alertVisible}
+        title="Validation Error"
+        message="Please fill all required fields."
+        type="error"
+        onConfirm={() => setAlertVisible(false)}
+      />
       <Header 
         title="Tourist Registration Form"
         navigation={navigation}
         showBackButton
-        onBackPress={() => navigation.navigate('QRCodeScreen')}
+        onBackPress={() => navigation.navigate('qrcode')}
       />
       <Breadcrumbs items={['Home', 'QR Code', 'Tourist Form']} />
       <ScrollView
@@ -257,7 +269,7 @@ const TouristFormScreen = () => {
           )}
         </View>
         {/* Consent Checkbox and Statement */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 20, width: 280, alignSelf: 'center', paddingHorizontal: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, marginBottom: 20, width: 280, alignSelf: 'center', paddingHorizontal: 0 }}>
           <TouchableOpacity
             onPress={() => setConsentChecked(!consentChecked)}
             style={{ marginRight: 8, width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: consentChecked ? '#8B0000' : '#ccc', backgroundColor: consentChecked ? '#8B0000' : '#fff', justifyContent: 'center', alignItems: 'center' }}

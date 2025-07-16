@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import theme from '../config/theme';
 
@@ -76,21 +76,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   floatingNav: {
-    borderRadius: 25,
+    borderRadius: 30,
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.primary,
-    ...(Platform.OS === 'android' && {
-      shadowColor: '#000000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 3,
-    }),
   },
   navContent: {
     flexDirection: 'row',

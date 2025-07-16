@@ -213,10 +213,12 @@ const LandmarksScreen = () => {
             flex: 1,
             marginTop: 8,
             marginBottom: 5,
-            backgroundColor: '#F3EDF7',
+            backgroundColor: '#ffffff',
             borderRadius: 16,
             paddingLeft: 4,
             paddingRight: 4,
+            borderWidth: 1,
+            borderColor: '#E0E0E0',
           }}>
             <Searchbar
               placeholder="Search landmarks..."

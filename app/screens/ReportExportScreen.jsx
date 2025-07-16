@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
 import BottomNavigationBar from '../components/BottomNavigationBar';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -101,6 +101,31 @@ const ReportExportScreen = () => {
   const handleExport = async () => {
     setExported(true);
     const html = generateReportHtml(mockTableData);
+    if (Platform.OS === 'web') {
+      // Use html2pdf.js for web
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+        const element = document.createElement('div');
+        element.innerHTML = html;
+        document.body.appendChild(element);
+        window.html2pdf()
+          .set({
+            margin: 10,
+            filename: 'lipa-tourist-report.pdf',
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+          })
+          .from(element)
+          .save()
+          .then(() => {
+            document.body.removeChild(element);
+            setTimeout(() => setExported(false), 2000);
+          });
+      };
+      document.body.appendChild(script);
+      return;
+    }
     try {
       // Generate PDF and get URI
       const { uri } = await Print.printToFileAsync({ html });
@@ -127,6 +152,11 @@ const ReportExportScreen = () => {
         onBackPress={() => navigation.replace('dashboard')}
       />
       <Breadcrumbs items={["Dashboard", "Reports"]} />
+      <View style={styles.stickyExportWrapper}>
+        <Button mode="contained" onPress={handleExport} style={styles.exportButton}>
+          {exported ? "Exported!" : "Export Report"}
+        </Button>
+      </View>
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         {mockLandmarkTypes.map((type) => {
           const report = mockReportByType[type.type_name];
@@ -161,9 +191,6 @@ const ReportExportScreen = () => {
             </Card>
           );
         })}
-        <Button mode="contained" onPress={handleExport} style={styles.exportButton}>
-          {exported ? "Exported!" : "Export Report"}
-        </Button>
       </ScrollView>
       <BottomNavigationBar navigation={navigation} currentRoute="reports" />
     </View>
@@ -187,52 +214,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 32,
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
+    boxSizing: 'border-box',
+  },
   card: {
-    marginVertical: theme.spacing.sm,
+    width: '100%',
+    maxWidth: 480,
+    minWidth: 320,
+    alignSelf: 'center',
+    margin: theme.spacing.md,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.medium,
     borderWidth: 1,
     borderColor: theme.colors.surfaceVariant,
     backgroundColor: '#fff',
-    width: '90%',
-    maxWidth: 400,
-    minWidth: 260,
-    alignSelf: 'center',
     alignItems: 'flex-start',
+    boxSizing: 'border-box',
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
     color: theme.colors.primary,
   },
   value: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     marginBottom: 6,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 8,
     marginBottom: 2,
     color: theme.colors.primary,
   },
   pattern: {
-    fontSize: 14,
+    fontSize: 12,
     marginBottom: 2,
     color: theme.colors.onSurface,
   },
   area: {
-    fontSize: 14,
+    fontSize: 12,
     marginBottom: 2,
     color: theme.colors.onSurfaceVariant,
   },
+  stickyExportWrapper: {
+    position: 'sticky',
+    top: 40,
+    zIndex: 5,
+    backgroundColor: theme.colors.background,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    width: '100%',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
   exportButton: {
-    marginTop: theme.spacing.lg,
     borderRadius: theme.borderRadius.medium,
     alignSelf: 'center',
+    minWidth: 180,
+    maxWidth: 240,
   },
 });
 

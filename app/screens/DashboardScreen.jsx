@@ -372,7 +372,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
                       } ({landmarkAnalysisData[selectedLandmark].peakDay.count} visitors)</Text>
                     </View>
                   </View>
-                  <View style={styles.analysisChartContainer}>
+                  <View style={styles.chartContainer}>
                     <ScrollView
                       horizontal={true}
                       showsHorizontalScrollIndicator={false}
@@ -382,19 +382,34 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
                       <LineChart
                         data={getFilteredLandmarkChart()}
                         width={chartWidth}
-                        height={260}
-                        chartConfig={chartConfig}
+                        height={220}
+                        chartConfig={{
+                          ...chartConfig,
+                          backgroundGradientFrom: "#ffffff",
+                          backgroundGradientTo: "#ffffff",
+                          decimalPlaces: 0,
+                          paddingLeft: 0,
+                          paddingRight: 0,
+                          paddingTop: 10,
+                          paddingBottom: 30,
+                          labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
+                          propsForLabels: {
+                            fontSize: 9,
+                            fontFamily: 'Poppins-Regular',
+                            rotation: -45,
+                          }
+                        }}
                         bezier
-                        style={styles.analysisChart}
+                        style={styles.chart}
                         withDots={true}
                         withShadow={false}
                         withInnerLines={true}
                         withOuterLines={true}
                         withVerticalLines={true}
                         withHorizontalLines={true}
-                        segments={5}
+                        segments={4}
                         yAxisInterval={1}
-                        fromZero={true}
+                        fromZero={false}
                         getDotColor={() => '#458ED1'}
                       />
                     </ScrollView>
@@ -439,8 +454,8 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       justifyContent: 'space-between',
       alignItems: 'stretch',
       marginHorizontal: '1.5%',
-      gap: 6, // Reduced gap between cards
-          marginBottom: 6, // Reduced bottom margin
+      gap: 5, // Reduced gap between cards
+          marginBottom: 5, // Reduced bottom margin
     },
     grid1CardWrapper: {
       width: '48.5%', // Slightly wider cards
@@ -451,8 +466,8 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
-      padding: 16,
+            borderColor: '#E0E0E0',
+      padding: 8,
       marginTop: 4,
       marginBottom: 8,
       alignSelf: 'stretch',
@@ -493,7 +508,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       backgroundColor: '#FFFFFF',
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
+            borderColor: '#E0E0E0',
       marginHorizontal: '1.5%',
       paddingVertical: 5,
       paddingHorizontal: 0,
@@ -513,12 +528,13 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       justifyContent: 'flex-start',
       paddingHorizontal: 0,
       paddingVertical: 0,
+      paddingRight: 24,
       margin: 0,
       flexGrow: 0,
     },
     chart: {
-      marginLeft: -15,
-      marginRight: 20,
+      marginLeft: 0,
+      marginRight: 8,
       marginTop: 15,
       marginBottom: 10,
       alignSelf: 'flex-start',
@@ -545,7 +561,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       alignItems: 'stretch',
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
+            borderColor: '#E0E0E0',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
@@ -554,22 +570,23 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
     grid4Container: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       alignItems: 'stretch',
-      marginHorizontal: '1.5%',
-      marginTop: 6, // Reduced bottom margin
+      marginHorizontal: 0,
+      marginTop: 5, // Reduced bottom margin
     },
     analysisCard: {
-      width: '100%',
       backgroundColor: theme.colors.surface, // white
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant, // light gray
-      padding: 16,
+      borderColor: '#E0E0E0',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
       marginTop: 2,
       marginBottom: 6, // Reduced gap below analysis card
-      alignSelf: 'stretch',
-      maxWidth: '100%',
+      maxWidth: 800,
+      width: '100%',
+      minWidth: 0,
     },
     analysisLabel: {
       fontSize: 15,
@@ -614,15 +631,15 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       marginHorizontal: 2,
     },
     analysisDateText: {
-      fontSize: 14,
-      fontFamily: 'Poppins-Regular',
-      color: '#222',
+      fontSize: 12,
+      fontFamily: 'Poppins-Medium',
+      color: '#666666',
       width: '100%',
     },
     analysisDateToLabel: {
-      fontSize: 13,
+      fontSize: 12,
       fontFamily: 'Poppins-Medium',
-      color: '#444',
+      color: '#666666',
       marginHorizontal: 4,
       alignSelf: 'center',
     },
@@ -630,7 +647,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       marginLeft: 8,
       paddingVertical: 6,
       paddingHorizontal: 12,
-      backgroundColor: '#E53935',
+      backgroundColor: '#850000',
       borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
@@ -646,7 +663,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       backgroundColor: '#FFFFFF',
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
+            borderColor: '#E0E0E0',
       marginHorizontal: 0, // Remove extra margin to align with grid containers
       padding: theme.spacing.md,
       paddingBottom: 1, // Reduce bottom padding
@@ -673,7 +690,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       height: 32,
       textAlign: 'center',
       lineHeight: 32,
-    },
+    },  
     rank1: {
       backgroundColor: '#3776AB', // Blue
     },
@@ -687,9 +704,9 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       flex: 1,
     },
     landmarkName: {
-      fontSize: 16,
+      fontSize: 14,
       fontFamily: 'Poppins-SemiBold',
-      color: '#333333',
+      color: '#850000',
       marginBottom: 4,
     },
     landmarkStats: {
@@ -748,20 +765,23 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
+      borderColor: '#E0E0E0',
       padding: 15,
-      alignItems: 'stretch',
+      width: '100%',
+      maxWidth: 800,
+      minWidth: 0,
     },
     analysisStatsTitle: {
-      fontSize: 20,
+      fontSize: 14,
       fontFamily: 'Poppins-SemiBold',
-      color: '#222',
+      color: '#850000',
       marginBottom: 12,
     },
     analysisStatsRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginBottom: 18,
+      alignContent: 'center',
     },
     analysisStatsCol: {
       flex: 1,
@@ -769,14 +789,14 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       marginRight: 12,
     },
     analysisStatsLabel: {
-      fontSize: 13,
-      color: '#6B7280',
+      fontSize: 12,
+      color: '#8E8E93',
       fontFamily: 'Poppins-Medium',
       marginBottom: 2,
     },
     analysisStatsValue: {
-      fontSize: 20,
-      color: '#222',
+      fontSize: 14,
+      color: '#850000',
       fontFamily: 'Poppins-SemiBold',
       marginBottom: 2,
     },

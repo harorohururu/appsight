@@ -1,1 +1,0 @@
-This file marks the folder for cleanup. All mock/static data files except countries.js will be deleted.

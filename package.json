@@ -55,7 +55,8 @@
     "tamagui": "^1.130.8",
     "expo-print": "~14.1.4",
     "expo-sharing": "~13.1.5",
-    "expo-file-system": "~18.1.11"
+    "expo-file-system": "~18.1.11",
+    "expo-media-library": "~17.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

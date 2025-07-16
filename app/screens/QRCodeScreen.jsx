@@ -1,5 +1,7 @@
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import QRCode from 'react-native-qrcode-svg';
 import BottomNavigationBar from '../components/BottomNavigationBar';
@@ -16,15 +18,66 @@ const QRCodeScreen = () => {
   const [qrValue] = useState(TOURIST_FORM_URL);
   const [qrRef, setQrRef] = useState(null);
 
-  const handleDownloadQR = () => {
-    if (qrRef) {
+  const handleDownloadQR = async () => {
+    if (!qrRef) return;
+    if (Platform.OS === 'web') {
       qrRef.toDataURL((dataURL) => {
-        Alert.alert(
-          'QR Code Generated',
-          'QR Code has been generated successfully. In a real app, this would trigger a download.',
-          [{ text: 'OK' }]
-        );
+        // Short bond paper size: 612x792 px
+        const canvas = document.createElement('canvas');
+        const paperWidth = 612;
+        const paperHeight = 792;
+        const qrSize = 240;
+        const title = 'Lipa City Tourist Monitoring';
+        const linkText = 'https://forms.gle/your-google-form-id';
+        const fontSize = 32;
+        const linkFontSize = 20;
+        canvas.width = paperWidth;
+        canvas.height = paperHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, paperWidth, paperHeight);
+        // Center QR code
+        const qrImg = new window.Image();
+        qrImg.src = `data:image/png;base64,${dataURL}`;
+        qrImg.onload = () => {
+          const qrX = (paperWidth - qrSize) / 2;
+          const qrY = paperHeight / 2 - qrSize / 2 - 60;
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          // Title below QR
+          ctx.font = `bold ${fontSize}px Poppins, Arial, sans-serif`;
+          ctx.fillStyle = '#8B0000';
+          ctx.textAlign = 'center';
+          ctx.fillText(title, paperWidth / 2, qrY + qrSize + fontSize + 24);
+          // Link below title
+          ctx.font = `${linkFontSize}px Poppins, Arial, sans-serif`;
+          ctx.fillStyle = '#666';
+          ctx.fillText(linkText, paperWidth / 2, qrY + qrSize + fontSize + 24 + linkFontSize + 16);
+          const outData = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = outData;
+          link.download = 'lipa-tourist-qr.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
       });
+      return;
+    }
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Cannot save image without media library permission.');
+        return;
+      }
+      qrRef.toDataURL(async (dataURL) => {
+        const fileUri = FileSystem.cacheDirectory + 'lipa-tourist-qr.png';
+        await FileSystem.writeAsStringAsync(fileUri, dataURL, { encoding: FileSystem.EncodingType.Base64 });
+        const asset = await MediaLibrary.createAssetAsync(fileUri);
+        await MediaLibrary.createAlbumAsync('Download', asset, false);
+        Alert.alert('Success', 'QR Code saved to your device!');
+      });
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save QR code.');
     }
   };
 
@@ -59,6 +112,7 @@ const QRCodeScreen = () => {
             color={theme.colors.primary}
             getRef={ref => setQrRef(ref)}
           />
+          <Text style={styles.qrTitle}>Lipa City Tourist Monitoring</Text>
         </View>
         <Text style={styles.qrUrl}>{qrValue}</Text>
         <View style={styles.buttonsContainer}>
@@ -99,13 +153,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
-    marginTop: 100,
   },
   qrCodeWrapper: {
     marginBottom: theme.spacing.xs,
     alignSelf: 'center',
     width: 240,
     alignItems: 'center',
+    marginTop: theme.spacing.md,
   },
   qrUrl: {
     fontSize: 12,
@@ -122,6 +176,14 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'center',
     gap: 8,
+  },
+  qrTitle: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    color: theme.colors.primary,
+    marginTop: 12,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   button: {
     marginVertical: 4,

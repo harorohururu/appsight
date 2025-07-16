@@ -20,7 +20,7 @@ const Header = ({ title, showBackButton = false, onBackPress, navigation }) => {
     <Appbar.Header style={styles.header}>
       <View style={styles.leftSection}>
         {showBackButton && (
-          <Appbar.BackAction onPress={onBackPress ? onBackPress : () => navigation && navigation.replace && navigation.replace('landmarks')} color={theme.colors.onSurface} />
+          <Appbar.BackAction onPress={onBackPress ? onBackPress : () => navigation && navigation.replace && navigation.replace('landmarks')} color="#ffffff" />
         )}
       </View>
 
@@ -32,7 +32,7 @@ const Header = ({ title, showBackButton = false, onBackPress, navigation }) => {
 
       <View style={styles.rightSection}>
         <Appbar.Action
-          icon={() => <MaterialIcons name="logout" size={24} color="#8B0000" />}
+          icon={() => <MaterialIcons name="logout" size={24} color="#ffffff" />}
           onPress={() => setAlertVisible(true)}
         />
       </View>
@@ -53,7 +53,7 @@ const Header = ({ title, showBackButton = false, onBackPress, navigation }) => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.primary,
     elevation: 0,
     flexDirection: 'row',
     alignItems: 'center',
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   title: {
-    color: theme.colors.primary,
+    color: '#ffffff',
     fontFamily: 'Poppins-SemiBold',
     fontSize: 20,
     textAlign: 'center',
