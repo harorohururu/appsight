@@ -28,7 +28,7 @@ const Card = ({
                 <MaterialIcons 
                   name={icon} 
                   size={Platform.OS === 'android' ? 18 : 20} 
-                  color={iconColor} 
+                  color={theme.colors.primary} 
                   style={styles.icon}
                 />
               </View>
@@ -82,9 +82,11 @@ const styles = StyleSheet.create({
     width: Platform.OS === 'android' ? 32 : 36,
     height: Platform.OS === 'android' ? 32 : 36,
     borderRadius: Platform.OS === 'android' ? 16 : 18,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   rightSection: {
     flex: 1,

@@ -1,6 +1,7 @@
+
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Searchbar, Text } from 'react-native-paper';
 import BottomNavigationBar from '../components/BottomNavigationBar';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -9,6 +10,7 @@ import theme from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 import AlertModal from '../modals/AlertModal';
+
 
 // Sample data for demonstration
 const SAMPLE_LANDMARKS = [
@@ -250,37 +252,39 @@ const LandmarksScreen = () => {
           ))}
         </View>
         {/* Filter Modal */}
-        {filterModal && (
-          <View style={styles.filterModalOverlay}>
-            <View style={styles.filterModalCenteredContainer}>
-              <TouchableOpacity
-                style={StyleSheet.absoluteFill}
-                activeOpacity={1}
-                onPress={() => setFilterModal(false)}
-              />
-              <View style={styles.filterModal}>
-                <View style={styles.filterModalHeader}>
-                  <Text style={styles.filterTitle}>Filter by Type</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.filterOption, !selectedType && styles.filterOptionSelected]}
-                  onPress={() => handleFilterType('')}
-                >
-                  <Text style={[styles.filterOptionText, !selectedType && styles.filterOptionTextSelected]}>All</Text>
-                </TouchableOpacity>
-                {landmarkTypes.map(type => (
-                  <TouchableOpacity
-                    key={type.type_id}
-                    style={[styles.filterOption, selectedType === type.type_id && styles.filterOptionSelected]}
-                    onPress={() => handleFilterType(type.type_id)}
-                  >
-                    <Text style={[styles.filterOptionText, selectedType === type.type_id && styles.filterOptionTextSelected]}>{type.type_name}</Text>
-                  </TouchableOpacity>
-                ))}
+        <Modal
+          visible={filterModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setFilterModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={styles.filterModal}>
+              <View style={styles.filterModalHeader}>
+                <Text style={styles.filterTitle}>Filter by Type</Text>
               </View>
+              <TouchableOpacity
+                style={[styles.filterOption, !selectedType && styles.filterOptionSelected]}
+                onPress={() => handleFilterType('')}
+              >
+                <Text style={[styles.filterOptionText, !selectedType && styles.filterOptionTextSelected]}>All</Text>
+              </TouchableOpacity>
+              {landmarkTypes.map(type => (
+                <TouchableOpacity
+                  key={type.type_id}
+                  style={[styles.filterOption, selectedType === type.type_id && styles.filterOptionSelected]}
+                  onPress={() => handleFilterType(type.type_id)}
+                >
+                  <Text style={[styles.filterOptionText, selectedType === type.type_id && styles.filterOptionTextSelected]}>{type.type_name}</Text>
+                </TouchableOpacity>
+              ))}
+              {/* X button to close modal */}
+              <TouchableOpacity style={styles.filterModalCloseIcon} onPress={() => setFilterModal(false)}>
+                <MaterialIcons name="close" size={24} color={theme.colors.primary} />
+              </TouchableOpacity>
             </View>
           </View>
-        )}
+        </Modal>
       </View>
       <BottomNavigationBar navigation={navigation} currentRoute="landmarks" />
       <AlertModal
@@ -329,6 +333,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     boxSizing: 'border-box',
+  },
+    filterModalCloseIcon: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    padding: 4,
   },
   resultCount: {
     fontSize: 12,

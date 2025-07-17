@@ -1,9 +1,9 @@
-import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import QRCode from 'react-native-qrcode-svg';
+import ViewShot from 'react-native-view-shot';
 import BottomNavigationBar from '../components/BottomNavigationBar';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Button from '../components/Button';
@@ -17,11 +17,13 @@ const QRCodeScreen = () => {
   const TOURIST_FORM_URL = 'https://forms.gle/your-google-form-id';
   const [qrValue] = useState(TOURIST_FORM_URL);
   const [qrRef, setQrRef] = useState(null);
+  const [viewShotRef, setViewShotRef] = useState(null);
 
   const handleDownloadQR = async () => {
-    if (!qrRef) return;
     if (Platform.OS === 'web') {
+      if (!qrRef) return;
       qrRef.toDataURL((dataURL) => {
+        // ...existing code for web download...
         // Short bond paper size: 612x792 px
         const canvas = document.createElement('canvas');
         const paperWidth = 612;
@@ -63,19 +65,21 @@ const QRCodeScreen = () => {
       });
       return;
     }
+    // Mobile: use view-shot
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Cannot save image without media library permission.');
         return;
       }
-      qrRef.toDataURL(async (dataURL) => {
-        const fileUri = FileSystem.cacheDirectory + 'lipa-tourist-qr.png';
-        await FileSystem.writeAsStringAsync(fileUri, dataURL, { encoding: FileSystem.EncodingType.Base64 });
-        const asset = await MediaLibrary.createAssetAsync(fileUri);
-        await MediaLibrary.createAlbumAsync('Download', asset, false);
-        Alert.alert('Success', 'QR Code saved to your device!');
-      });
+      if (!viewShotRef) {
+        Alert.alert('Error', 'QR view not ready.');
+        return;
+      }
+      const uri = await viewShotRef.capture();
+      const asset = await MediaLibrary.createAssetAsync(uri);
+      await MediaLibrary.createAlbumAsync('Download', asset, false);
+      Alert.alert('Success', 'QR Code saved to your device!');
     } catch (e) {
       Alert.alert('Error', 'Failed to save QR code.');
     }
@@ -104,6 +108,28 @@ const QRCodeScreen = () => {
         contentContainerStyle={styles.centeredContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Hidden composite view for view-shot capture on mobile */}
+        <ViewShot
+          ref={ref => setViewShotRef(ref)}
+          options={{ format: 'png', quality: 1.0, width: 612, height: 792 }}
+          style={{ position: 'absolute', left: -9999, width: 612, height: 792, backgroundColor: '#fff' }}
+        >
+          <View style={{ width: 612, height: 792, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ marginTop: 60, marginBottom: 24 }}>
+              <QRCode
+                value={qrValue}
+                size={240}
+                backgroundColor="white"
+                color={theme.colors.primary}
+              />
+            </View>
+            <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#8B0000', marginBottom: 16, textAlign: 'center' }}>
+              Lipa City Tourist Monitoring
+            </Text>
+            <Text style={{ fontSize: 20, color: '#666', textAlign: 'center' }}>{qrValue}</Text>
+          </View>
+        </ViewShot>
+        {/* Visible QR and controls */}
         <View style={styles.qrCodeWrapper}>
           <QRCode
             value={qrValue}
@@ -151,6 +177,7 @@ const styles = StyleSheet.create({
   centeredContent: {
     flexGrow: 1,
     alignItems: 'center',
+    marginTop: 100,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
   },

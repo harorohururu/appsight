@@ -65,7 +65,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
 
     const dashboardCards = [
       {
-        title: 'Total Tourists',
+        title: 'Total Tourists in Lipa',
         value: totalVisitors.toString(),
         icon: 'people',
         description: 'All-time tourist count',
@@ -466,7 +466,7 @@ import DateRangePickerModal from '../modals/DateRangePickerModal';
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.medium,
       borderWidth: 1,
-            borderColor: '#E0E0E0',
+      borderColor: '#E0E0E0',
       padding: 8,
       marginTop: 4,
       marginBottom: 8,
