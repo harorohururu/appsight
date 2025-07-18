@@ -11,13 +11,18 @@ import Header from '../components/Header';
 import config from '../config/config';
 import theme from '../config/theme';
 import { useNavigation } from '../context/NavigationContext';
+import AlertModal from '../modals/AlertModal';
 
 const QRCodeScreen = () => {
   const navigation = useNavigation();
-  const TOURIST_FORM_URL = 'https://forms.gle/your-google-form-id';
-  const [qrValue] = useState(TOURIST_FORM_URL);
+  // Use deep link for Tourist Form screen (for download)
+  const DEEP_LINK_URL = 'exp://appSight.expo.dev/--/touristForm';
+  // Use Expo Go deep link for visible QR code only
+  const EXPO_DEEP_LINK = 'exp://appSight.expo.dev/--/touristForm';
+  const [qrValue] = useState(EXPO_DEEP_LINK);
   const [qrRef, setQrRef] = useState(null);
   const [viewShotRef, setViewShotRef] = useState(null);
+  const [successModal, setSuccessModal] = useState(false);
 
   const handleDownloadQR = async () => {
     if (Platform.OS === 'web') {
@@ -30,7 +35,7 @@ const QRCodeScreen = () => {
         const paperHeight = 792;
         const qrSize = 240;
         const title = 'Lipa City Tourist Monitoring';
-        const linkText = 'https://forms.gle/your-google-form-id';
+        const linkText = DEEP_LINK_URL;
         const fontSize = 32;
         const linkFontSize = 20;
         canvas.width = paperWidth;
@@ -79,7 +84,7 @@ const QRCodeScreen = () => {
       const uri = await viewShotRef.capture();
       const asset = await MediaLibrary.createAssetAsync(uri);
       await MediaLibrary.createAlbumAsync('Download', asset, false);
-      Alert.alert('Success', 'QR Code saved to your device!');
+      setSuccessModal(true);
     } catch (e) {
       Alert.alert('Error', 'Failed to save QR code.');
     }
@@ -131,8 +136,9 @@ const QRCodeScreen = () => {
         </ViewShot>
         {/* Visible QR and controls */}
         <View style={styles.qrCodeWrapper}>
+          {/* Visible QR code uses Expo Go deep link */}
           <QRCode
-            value={qrValue}
+            value={EXPO_DEEP_LINK}
             size={200}
             backgroundColor="white"
             color={theme.colors.primary}
@@ -141,6 +147,9 @@ const QRCodeScreen = () => {
           <Text style={styles.qrTitle}>Lipa City Tourist Monitoring</Text>
         </View>
         <Text style={styles.qrUrl}>{qrValue}</Text>
+        <Text style={{ fontSize: 13, color: '#444', textAlign: 'center', marginBottom: 12, marginTop: 2 }}>
+          Scan this QR code with the app to open the Tourist Registration Form directly.
+        </Text>
         <View style={styles.buttonsContainer}>
           <Button
             title="Download QR Code"
@@ -165,6 +174,14 @@ const QRCodeScreen = () => {
         </View>
       </ScrollView>
       <BottomNavigationBar navigation={navigation} currentRoute="qrcode" />
+      <AlertModal
+        visible={successModal}
+        title="Success"
+        message="QR Code saved to your device!"
+        confirmText="OK"
+        type="success"
+        onConfirm={() => setSuccessModal(false)}
+      />
     </View>
   );
 };

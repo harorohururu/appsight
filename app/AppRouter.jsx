@@ -10,6 +10,7 @@ import LoginScreen from './screens/LoginScreen';
 import QRCodeScreen from './screens/QRCodeScreen';
 import ReportExportScreen from './screens/ReportExportScreen';
 import TouristFormScreen from './screens/TouristFormScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
 
 const AppRouter = () => {
   const { isAuthenticated } = useAuth();
@@ -18,9 +19,16 @@ const AppRouter = () => {
   // Debug log to trace route changes
   console.log('AppRouter: currentRoute =', currentRoute);
 
-  // If not authenticated, show login screen
+  // If not authenticated, show welcome screen first
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    switch (currentRoute) {
+      case 'welcome':
+        return <WelcomeScreen />;
+      case 'login':
+        return <LoginScreen />;
+      default:
+        return <WelcomeScreen />;
+    }
   }
 
   // Route to appropriate authenticated screen

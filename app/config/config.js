@@ -6,6 +6,8 @@ const config = {
     latitude: 13.941089469045563,
     longitude: 121.16354084417924,
   },
+QR_CODE_URL: 'http://localhost:8081/touristForm', // Update this to your actual QR code URL
 };
 
 export default config;
+  

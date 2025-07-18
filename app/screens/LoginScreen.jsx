@@ -14,6 +14,7 @@ import {
   Text
 } from 'react-native-paper';
 import config from '../config/config';
+import theme from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 import AlertModal from '../modals/AlertModal';
@@ -21,6 +22,7 @@ import PrivacyPolicyModal from '../modals/PrivacyPolicyModal';
 import TermsModal from '../modals/TermsModal';
 
 const LoginScreen = () => {
+  const [consentChecked, setConsentChecked] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -165,18 +167,28 @@ const LoginScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-        {/* Privacy & Terms Statement */}
-        <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 20, paddingHorizontal: 8 }}>
-          <Text style={{ fontSize: 12, color: '#444', textAlign: 'left', fontFamily: 'Poppins-Regular' }}>
-            By logging in, you agree to our{' '}
-            <Text style={{ color: '#8B0000', textDecorationLine: 'underline' }} onPress={() => setTermsVisible(true)}>
-              Terms & Conditions
+        {/* Consent Checkbox and Statement */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 20, paddingHorizontal: 8 }}>
+          <TouchableOpacity
+            onPress={() => setConsentChecked(!consentChecked)}
+            style={{ marginRight: 8, width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: consentChecked ? theme.colors.primary : '#ccc', backgroundColor: consentChecked ? theme.colors.primary : '#fff', justifyContent: 'center', alignItems: 'center' }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consentChecked }}
+          >
+            {consentChecked && (
+              <MaterialIcons name="check" size={18} color="#fff" />
+            )}
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, color: '#222', flex: 1, fontFamily: 'Poppins-Regular' }}>
+            I agree to our{' '}
+            <Text style={{ color: theme.colors.primary, textDecorationLine: 'underline' }} onPress={() => setTermsVisible(true)}>
+              Terms of service
             </Text>
-            {' '}and{' '}
-            <Text style={{ color: '#8B0000', textDecorationLine: 'underline' }} onPress={() => setPrivacyVisible(true)}>
+            {' '} &{' '}
+            <Text style={{ color: theme.colors.primary, textDecorationLine: 'underline' }} onPress={() => setPrivacyVisible(true)}>
               Privacy Policy
             </Text>
-            .
+            {' '}guideline.
           </Text>
         </View>
         {/* Login Button */}
@@ -185,9 +197,9 @@ const LoginScreen = () => {
             onPress={handleLogin}
             onPressIn={() => setButtonPressed(true)}
             onPressOut={() => setButtonPressed(false)}
-            disabled={loading}
+            disabled={loading || !consentChecked}
             activeOpacity={1}
-            style={[styles.loginButton, buttonPressed && styles.loginButtonPressed]}
+            style={[styles.loginButton, buttonPressed && styles.loginButtonPressed, !consentChecked && { opacity: 0.5 }]}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
@@ -217,7 +229,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.secondary, // 30% secondary
   },
   container: {
     flex: 1,
@@ -235,14 +247,14 @@ const styles = StyleSheet.create({
   appTitleText: {
     fontSize: 32,
     fontFamily: 'Poppins-Bold',
-    color: '#8B0000',
+    color: theme.colors.primary, // 60% primary
     textAlign: 'left',
     letterSpacing: -1,
   },
   appSubtitle: {
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#8E8E93',
+    color: theme.colors.tertiary, // 10% tertiary
     textAlign: 'left',
     lineHeight: 22,
     marginTop: 4,
@@ -253,7 +265,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontFamily: 'Poppins-Medium',
-    color: '#8B0000',
+    color: theme.colors.primary, // 60% primary
     marginBottom: 8,
     paddingHorizontal: 4,
   },
@@ -279,8 +291,8 @@ const styles = StyleSheet.create({
     paddingRight: 40,
   },
   inputFocused: {
-    borderColor: '#8B0000',
-    backgroundColor: '#FFFFFF',
+    borderColor: theme.colors.primary, // 60% primary
+    backgroundColor: theme.colors.secondary, // 30% secondary
   },
   eyeIconContainer: {
     position: 'absolute',
@@ -291,14 +303,14 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   loginButton: {
-    backgroundColor: '#8B0000',
+    backgroundColor: theme.colors.primary, // 60% primary
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
   },
   loginButtonPressed: {
-    backgroundColor: '#5A0000',
+    backgroundColor: theme.colors.tertiary, // 10% tertiary
   },
   loginButtonText: {
     color: '#FFFFFF',

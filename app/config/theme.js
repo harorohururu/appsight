@@ -15,12 +15,12 @@ const theme = {
   fonts,
   colors: {
     ...MD3LightTheme.colors,
-    primary: '#8B0000', // Dark red for government theme
-    primaryContainer: '#FFE6E6',
-    secondary: '#B71C1C',
-    secondaryContainer: '#FFEBEE',
-    tertiary: '#D32F2F',
-    tertiaryContainer: '#FFCDD2',
+    primary: '#850000', // Updated primary color
+    primaryContainer: '#fdfffc', // Updated to match secondary/tertiary background
+    secondary: '#fdfffc', // Updated secondary color
+    secondaryContainer: '#850000', // Contrast for secondary
+    tertiary: '#121113', // Updated tertiary color
+    tertiaryContainer: '#850000', // Contrast for tertiary
     surface: '#FFFFFF',
     surfaceVariant: '#F5F5F5',
     background: '#FAFAFA',

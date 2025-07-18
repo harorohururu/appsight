@@ -101,7 +101,7 @@ const TouristFormScreen = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>Tourist Form</Text>
+        <Text style={styles.sectionTitle}>Tourist Preview Form</Text>
         <View style={styles.formContainer}>
           <Text style={styles.label}>Allocation Type</Text>
         <Text style={{ fontSize: 12, color: '#888', marginBottom: 8, alignSelf: 'flex-start', marginLeft: 2 }}>
