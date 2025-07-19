@@ -112,6 +112,23 @@ app/
 
 ---
 
+## 🌐 Changing WiFi or Network
+
+If you change WiFi, your computer’s IP address may change.
+
+- Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux) to find your new IPv4 address.
+- Update the API URL in your frontend code to use the new IP address (e.g., `http://<NEW_IP>:5000`).
+- Restart your frontend app.
+
+Example:
+```js
+fetch('http://NEW_IP_ADDRESS:5000/api/users/login', { ... })
+```
+
+If you are running the app on a mobile device or emulator, always use your computer’s IP address, not `localhost`.
+
+---
+
 ## 🤝 Join the Community
 
 - [Expo on GitHub](https://github.com/expo/expo)

@@ -1,21 +1,18 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { HelperText, Button as PaperButton, Text, TextInput } from 'react-native-paper';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Header from '../components/Header';
+import { API_URL } from '../config/config';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 import AlertModal from './AlertModal';
 
-const MOCK_LANDMARK_TYPES = [
-  { type_id: 1, type_name: 'Hotel' },
-  { type_id: 2, type_name: 'Resort' },
-  { type_id: 3, type_name: 'Church' },
-];
+// Remove mock types
 
-const AddLandmarkModal = () => {
+const AddLandmarkModal = ({ visible, onClose, animationType, fullHeight }) => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
@@ -23,13 +20,14 @@ const AddLandmarkModal = () => {
     landmark_type: '',
     address: '',
     total_rooms: '',
+    attraction_code: '',
   });
   const [contactPerson, setContactPerson] = useState({
     name: '',
     contact_type: 'phone',
     value: '',
   });
-  const [landmarkTypes, setLandmarkTypes] = useState(MOCK_LANDMARK_TYPES);
+  const [landmarkTypes, setLandmarkTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ visible: false, title: '', message: '', type: 'error' });
@@ -45,6 +43,19 @@ const AddLandmarkModal = () => {
   const contactValueRef = useRef(null);
 
   useEffect(() => {
+    // Fetch landmark types from backend
+    const fetchTypes = async () => {
+      try {
+        const res = await fetch(`${API_URL}/landmark_type`);
+        const data = await res.json();
+        console.log('[AddLandmarkModal] Fetched landmark types:', data);
+        setLandmarkTypes(data);
+      } catch (err) {
+        console.error('[AddLandmarkModal] Error fetching landmark types:', err);
+        setLandmarkTypes([]);
+      }
+    };
+    fetchTypes();
     setFormData(f => ({ ...f, landmark_type: '' }));
     setContactPerson(c => ({ ...c, contact_type: '' }));
   }, []);
@@ -62,6 +73,7 @@ const AddLandmarkModal = () => {
       }
     }
     if (!contactPerson.name.trim()) newErrors.contactPersonName = 'Required';
+    if (!contactPerson.contact_type) newErrors.contactPersonType = 'Required';
     if (!contactPerson.value.trim()) newErrors.contactPersonValue = 'Required';
     else if (contactPerson.contact_type === 'email' && !isValidEmail(contactPerson.value)) {
       newErrors.contactPersonValue = 'Invalid email';
@@ -77,27 +89,65 @@ const AddLandmarkModal = () => {
 
   // Step 2: When user presses Add, validate and then create the landmark and contact
   const handleSave = async () => {
-    // Validate all fields
+    console.log('[AddLandmarkModal] handleSave called');
     if (!validateForm()) {
+      console.log('[AddLandmarkModal] Validation failed', { formData, contactPerson, errors });
       setAlert({ visible: true, title: 'Validation Error', message: 'Please fill all required fields', type: 'error' });
       return;
     }
     setLoading(true);
-    // Simulate adding landmark and contact locally
-    setTimeout(() => {
+    try {
+      // Only send the selected contact type and value
+      let contactPayload = null;
+      if (contactPerson.name && contactPerson.contact_type && contactPerson.value) {
+        contactPayload = {
+          name: contactPerson.name,
+          contact_type: contactPerson.contact_type,
+          value: contactPerson.value
+        };
+      }
+      const payload = {
+        name: formData.name,
+        landmark_type: formData.landmark_type,
+        address: formData.address,
+        total_rooms: formData.total_rooms,
+        attraction_code: formData.attraction_code,
+        contact_person: contactPayload,
+      };
+      console.log('[AddLandmarkModal] Sending POST /landmarks payload:', payload);
+      const res = await fetch(`${API_URL}/landmarks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setLoading(false);
+        setFormData({ name: '', landmark_type: '', address: '', total_rooms: '', attraction_code: '' });
+        setContactPerson({ name: '', contact_type: '', value: '' });
+        console.log('[AddLandmarkModal] Landmark added successfully');
+        navigation.replace('landmarks');
+      } else {
+        setLoading(false);
+        let errorMsg = 'Failed to add landmark.';
+        try {
+          const errorData = await res.json();
+          if (errorData.details) errorMsg += `\nReason: ${errorData.details}`;
+        } catch {}
+        console.error('[AddLandmarkModal] Error adding landmark:', errorMsg);
+        setAlert({ visible: true, title: 'Error', message: errorMsg, type: 'error' });
+      }
+    } catch (err) {
       setLoading(false);
-      navigation.replace('landmarks');
-    }, 800);
+      console.error('[AddLandmarkModal] Network error:', err);
+      setAlert({ visible: true, title: 'Error', message: 'Network error.', type: 'error' });
+    }
   };
 
   const requiresRooms = () => {
     const selectedType = landmarkTypes.find(t => t.type_id === formData.landmark_type);
-    return selectedType && (
-      selectedType.type_name === 'Hotel' ||
-      selectedType.type_name === 'Resort' ||
-      selectedType.type_name === 'Hotels' ||
-      selectedType.type_name === 'Resorts'
-    );
+    return [2, 3, 4, 5, 6].includes(Number(formData.landmark_type));
   };
 
   // Progressive validation: validate onBlur for each field
@@ -121,203 +171,247 @@ const AddLandmarkModal = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoiding}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    <Modal
+      visible={visible}
+      animationType={animationType || "slide"}
+      transparent={true}
     >
-      <Header 
-        title="Add Landmark"
-        navigation={navigation}
-        showBackButton
-        onBackPress={() => navigation.navigate('landmarks')}
-      />
-      <Breadcrumbs items={['Dashboard', 'Landmarks', 'Add Landmark']} />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <Text style={styles.sectionTitle}>Landmark Details</Text>
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Landmark Name</Text>
-          <TextInput
-            ref={nameRef}
-            value={formData.name}
-            onChangeText={text => setFormData({ ...formData, name: text })}
-            onBlur={() => handleBlur('name')}
-            style={styles.input}
-            mode="outlined"
-            error={!!errors.name && (touched.name || loading)}
-            placeholder="e.g. Grand Hotel"
-            left={<TextInput.Icon icon={() => <MaterialIcons name="place" size={20} color="#888" />} />}
-            returnKeyType="next"
-            onSubmitEditing={() => typeRef.current?.focus()}
-          />
-          {!!errors.name && (touched.name || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.name}</HelperText>}
-          <Text style={styles.label}>Landmark Type</Text>
-          <View
-            style={[styles.picker, touched.landmark_type && !!errors.landmark_type && styles.pickerError]}
-            onTouchEnd={() => {
-              setTouched(t => ({ ...t, landmark_type: true }));
-              if (!formData.landmark_type) setErrors(e => ({ ...e, landmark_type: 'Required' }));
-            }}
-          >
-            <Picker
-              ref={typeRef}
-              selectedValue={formData.landmark_type}
-              onValueChange={value => {
-                setFormData({ ...formData, landmark_type: value });
-                setTouched(t => ({ ...t, landmark_type: true }));
-                if (!value) {
-                  setErrors(e => ({ ...e, landmark_type: 'Required' }));
-                } else {
-                  setErrors(e => ({ ...e, landmark_type: undefined }));
-                }
-              }}
-              style={{ minHeight: 44, height: 'auto' }}
-              onBlur={() => {
-                setTouched(t => ({ ...t, landmark_type: true }));
-                if (!formData.landmark_type) setErrors(e => ({ ...e, landmark_type: 'Required' }));
-              }}
+        <View style={[styles.modalOverlay, fullHeight && styles.modalFullHeight]}>
+          <View style={[styles.modalContent, fullHeight && styles.modalContentFullHeight]}>
+            <Header 
+              title="Add Landmark"
+              navigation={navigation}
+              showBackButton
+              onBackPress={() => navigation.navigate('landmarks')}
+            />
+            <Breadcrumbs items={['Dashboard', 'Landmarks', 'Add Landmark']} />
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              <Picker.Item label="Select type..." value="" color="#aaa" />
-              {landmarkTypes.map(type => (
-                <Picker.Item key={type.type_id} label={type.type_name} value={type.type_id} />
-              ))}
-            </Picker>
-          </View>
-          {!!errors.landmark_type && (touched.landmark_type || loading) && (
-            <HelperText type="error" visible style={styles.helperText}>{errors.landmark_type}</HelperText>
-          )}
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            ref={addressRef}
-            value={formData.address}
-            onChangeText={text => setFormData({ ...formData, address: text })}
-            onBlur={() => handleBlur('address')}
-            style={styles.input}
-            mode="outlined"
-            multiline={false}
-            contentStyle={{ justifyContent: 'center' }}
-            error={!!errors.address && (touched.address || loading)}
-            placeholder="Street, City, Country"
-            left={<TextInput.Icon icon={() => <MaterialIcons name="location-on" size={20} color="#888" />} />}
-            returnKeyType="next"
-            onSubmitEditing={() => requiresRooms() ? totalRoomsRef.current?.focus() : Keyboard.dismiss()}
-          />
-          {!!errors.address && (touched.address || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.address}</HelperText>}
-          {requiresRooms() && (
-            <>
-              <Text style={styles.label}>Total Rooms</Text>
-              <TextInput
-                ref={totalRoomsRef}
-                value={formData.total_rooms}
-                onChangeText={text => setFormData({ ...formData, total_rooms: text })}
-                onBlur={() => handleBlur('total_rooms')}
-                style={styles.input}
-                mode="outlined"
-                keyboardType="numeric"
-                error={!!errors.total_rooms && (touched.total_rooms || loading)}
-                placeholder="e.g. 100"
-                left={<TextInput.Icon icon={() => <MaterialIcons name="hotel" size={20} color="#888" />} />}
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-              />
-              {!!errors.total_rooms && (touched.total_rooms || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.total_rooms}</HelperText>}
-            </>
-          )}
-        </View>
-        <Text style={styles.sectionTitle}>Contact Details</Text>
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Contact Name</Text>
-          <TextInput
-            ref={contactNameRef}
-            value={contactPerson.name}
-            onChangeText={text => setContactPerson({ ...contactPerson, name: text })}
-            onBlur={() => handleBlur('contactPersonName')}
-            style={styles.input}
-            mode="outlined"
-            error={!!errors.contactPersonName && (touched.contactPersonName || loading)}
-            placeholder="e.g. John Doe"
-            left={<TextInput.Icon icon={() => <MaterialIcons name="person" size={20} color="#888" />} />}
-            returnKeyType="next"
-            onSubmitEditing={() => contactTypeRef.current?.focus()}
-          />
-          {!!errors.contactPersonName && (touched.contactPersonName || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonName}</HelperText>}
-          <Text style={styles.label}>Type</Text>
-          <View style={[styles.picker, touched.contactPersonType && !!errors.contactPersonType && styles.pickerError]}> 
-            <Picker
-              ref={contactTypeRef}
-              selectedValue={contactPerson.contact_type}
-              onValueChange={value => {
-                setContactPerson({ ...contactPerson, contact_type: value, value: '' });
-                setTouched(t => ({ ...t, contactPersonType: true }));
-                if (!value) {
-                  setErrors(e => ({ ...e, contactPersonType: 'Required' }));
-                } else {
-                  setErrors(e => ({ ...e, contactPersonType: undefined }));
-                }
-              }}
-              style={{ minHeight: 44, height: 'auto' }}
-              onBlur={() => {
-                setTouched(t => ({ ...t, contactPersonType: true }));
-                if (!contactPerson.contact_type) setErrors(e => ({ ...e, contactPersonType: 'Required' }));
-              }}
-            >
-              <Picker.Item label="Select type..." value="" color="#aaa" />
-              {contactTypes.map(type => (
-                <Picker.Item
-                  key={type}
-                  label={type.charAt(0).toUpperCase() + type.slice(1)}
-                  value={type}
+              <Text style={styles.sectionTitle}>Landmark Details</Text>
+              <View style={styles.formContainer}>
+                <Text style={styles.label}>Landmark Name</Text>
+                <TextInput
+                  ref={nameRef}
+                  value={formData.name}
+                  onChangeText={text => setFormData({ ...formData, name: text })}
+                  onBlur={() => handleBlur('name')}
+                  style={styles.input}
+                  mode="outlined"
+                  error={!!errors.name && (touched.name || loading)}
+                  placeholder="e.g. Grand Hotel"
+                  left={<TextInput.Icon icon={() => <MaterialIcons name="place" size={20} color="#888" />} />}
+                  returnKeyType="next"
+                  onSubmitEditing={() => typeRef.current?.focus()}
                 />
-              ))}
-            </Picker>
+                {!!errors.name && (touched.name || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.name}</HelperText>}
+                <Text style={styles.label}>Landmark Type</Text>
+                <View
+                  style={[styles.picker, touched.landmark_type && !!errors.landmark_type && styles.pickerError]}
+                  onTouchEnd={() => {
+                    setTouched(t => ({ ...t, landmark_type: true }));
+                    if (!formData.landmark_type) setErrors(e => ({ ...e, landmark_type: 'Required' }));
+                  }}
+                >
+                  <Picker
+                    ref={typeRef}
+                    selectedValue={formData.landmark_type}
+                    onValueChange={value => {
+                      setFormData({ ...formData, landmark_type: value });
+                      setTouched(t => ({ ...t, landmark_type: true }));
+                      if (!value) {
+                        setErrors(e => ({ ...e, landmark_type: 'Required' }));
+                      } else {
+                        setErrors(e => ({ ...e, landmark_type: undefined }));
+                      }
+                    }}
+                    style={{ minHeight: 44, height: 'auto' }}
+                    onBlur={() => {
+                      setTouched(t => ({ ...t, landmark_type: true }));
+                      if (!formData.landmark_type) setErrors(e => ({ ...e, landmark_type: 'Required' }));
+                    }}
+                  >
+                    <Picker.Item label="Select type..." value="" color="#aaa" />
+                    {landmarkTypes.map(type => (
+                      <Picker.Item key={type.type_id} label={type.type_name} value={type.type_id} />
+                    ))}
+                  </Picker>
+                </View>
+                {!!errors.landmark_type && (touched.landmark_type || loading) && (
+                  <HelperText type="error" visible style={styles.helperText}>{errors.landmark_type}</HelperText>
+                )}
+
+                <Text style={styles.label}>Attraction Code</Text>
+                <TextInput
+                  value={formData.attraction_code}
+                  onChangeText={text => setFormData({ ...formData, attraction_code: text })}
+                  style={styles.input}
+                  mode="outlined"
+                  error={!!errors.attraction_code && (touched.attraction_code || loading)}
+                  placeholder="e.g. ATX-001"
+                />
+                <Text style={styles.label}>Address</Text>
+                <TextInput
+                  ref={addressRef}
+                  value={formData.address}
+                  onChangeText={text => setFormData({ ...formData, address: text })}
+                  onBlur={() => handleBlur('address')}
+                  style={styles.input}
+                  mode="outlined"
+                  multiline={false}
+                  contentStyle={{ justifyContent: 'center' }}
+                  error={!!errors.address && (touched.address || loading)}
+                  placeholder="Street, City, Country"
+                  left={<TextInput.Icon icon={() => <MaterialIcons name="location-on" size={20} color="#888" />} />}
+                  returnKeyType="next"
+                  onSubmitEditing={() => requiresRooms() ? totalRoomsRef.current?.focus() : Keyboard.dismiss()}
+                />
+                {!!errors.address && (touched.address || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.address}</HelperText>}
+                {requiresRooms() && (
+                  <>
+                    <Text style={styles.label}>Total Rooms (optional)</Text>
+                    <TextInput
+                      ref={totalRoomsRef}
+                      value={formData.total_rooms}
+                      onChangeText={text => setFormData({ ...formData, total_rooms: text })}
+                      onBlur={() => handleBlur('total_rooms')}
+                      style={styles.input}
+                      mode="outlined"
+                      keyboardType="numeric"
+                      error={!!errors.total_rooms && (touched.total_rooms || loading)}
+                      placeholder="e.g. 100"
+                      left={<TextInput.Icon icon={() => <MaterialIcons name="hotel" size={20} color="#888" />} />}
+                      returnKeyType="done"
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
+                    {/* Only show error if user entered something invalid, not if left blank */}
+                    {!!errors.total_rooms && formData.total_rooms && (touched.total_rooms || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.total_rooms}</HelperText>}
+                  </>
+                )}
+              </View>
+              <Text style={styles.sectionTitle}>Contact Details</Text>
+              <View style={styles.formContainer}>
+                <Text style={styles.label}>Contact Name</Text>
+                <TextInput
+                  ref={contactNameRef}
+                  value={contactPerson.name}
+                  onChangeText={text => setContactPerson({ ...contactPerson, name: text })}
+                  onBlur={() => handleBlur('contactPersonName')}
+                  style={styles.input}
+                  mode="outlined"
+                  error={!!errors.contactPersonName && (touched.contactPersonName || loading)}
+                  placeholder="e.g. John Doe"
+                  left={<TextInput.Icon icon={() => <MaterialIcons name="person" size={20} color="#888" />} />}
+                  returnKeyType="next"
+                  onSubmitEditing={() => contactTypeRef.current?.focus()}
+                />
+                {!!errors.contactPersonName && (touched.contactPersonName || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonName}</HelperText>}
+                <Text style={styles.label}>Type</Text>
+                <View style={[styles.picker, touched.contactPersonType && !!errors.contactPersonType && styles.pickerError]}> 
+                  <Picker
+                    ref={contactTypeRef}
+                    selectedValue={contactPerson.contact_type}
+                    onValueChange={value => {
+                      setContactPerson({ ...contactPerson, contact_type: value, value: '' });
+                      setTouched(t => ({ ...t, contactPersonType: true }));
+                      if (!value) {
+                        setErrors(e => ({ ...e, contactPersonType: 'Required' }));
+                      } else {
+                        setErrors(e => ({ ...e, contactPersonType: undefined }));
+                      }
+                    }}
+                    style={{ minHeight: 44, height: 'auto' }}
+                    onBlur={() => {
+                      setTouched(t => ({ ...t, contactPersonType: true }));
+                      if (!contactPerson.contact_type) setErrors(e => ({ ...e, contactPersonType: 'Required' }));
+                    }}
+                  >
+                    <Picker.Item label="Select type..." value="" color="#aaa" />
+                    {contactTypes.map(type => (
+                      <Picker.Item
+                        key={type}
+                        label={type.charAt(0).toUpperCase() + type.slice(1)}
+                        value={type}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+                {!!errors.contactPersonType && (touched.contactPersonType || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonType}</HelperText>}
+                <Text style={styles.label}>Contact</Text>
+                <TextInput
+                  ref={contactValueRef}
+                  value={contactPerson.value}
+                  onChangeText={text => setContactPerson({ ...contactPerson, value: text })}
+                  onBlur={() => handleBlur('contactPersonValue')}
+                  style={styles.input}
+                  mode="outlined"
+                  keyboardType={contactPerson.contact_type === 'email' ? 'email-address' : 'default'}
+                  error={!!errors.contactPersonValue && (touched.contactPersonValue || loading)}
+                  placeholder={contactPerson.contact_type === 'email' ? 'e.g. john@email.com' : 'e.g. 09123456789'}
+                  left={<TextInput.Icon icon={() => <MaterialIcons name={contactPerson.contact_type === 'email' ? 'email' : 'phone'} size={20} color="#888" />} />}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+                {!!errors.contactPersonValue && (touched.contactPersonValue || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonValue}</HelperText>}
+              </View>
+              <PaperButton
+                mode="contained"
+                onPress={handleSave}
+                loading={loading}
+                style={styles.saveButton}
+                icon="check"
+                contentStyle={{ flexDirection: 'row-reverse' }}
+              >
+                Add
+              </PaperButton>
+            </ScrollView>
+            <AlertModal
+              visible={alert.visible}
+              title={alert.title}
+              message={alert.message}
+              type={alert.type}
+              confirmText="OK"
+              onConfirm={alert.onClose ? alert.onClose : () => setAlert(a => ({ ...a, visible: false }))}
+            />
           </View>
-          {!!errors.contactPersonType && (touched.contactPersonType || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonType}</HelperText>}
-          <Text style={styles.label}>Contact</Text>
-          <TextInput
-            ref={contactValueRef}
-            value={contactPerson.value}
-            onChangeText={text => setContactPerson({ ...contactPerson, value: text })}
-            onBlur={() => handleBlur('contactPersonValue')}
-            style={styles.input}
-            mode="outlined"
-            keyboardType={contactPerson.contact_type === 'email' ? 'email-address' : 'default'}
-            error={!!errors.contactPersonValue && (touched.contactPersonValue || loading)}
-            placeholder={contactPerson.contact_type === 'email' ? 'e.g. john@email.com' : 'e.g. 09123456789'}
-            left={<TextInput.Icon icon={() => <MaterialIcons name={contactPerson.contact_type === 'email' ? 'email' : 'phone'} size={20} color="#888" />} />}
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-          />
-          {!!errors.contactPersonValue && (touched.contactPersonValue || loading) && <HelperText type="error" visible style={styles.helperText}>{errors.contactPersonValue}</HelperText>}
         </View>
-        <PaperButton
-          mode="contained"
-          onPress={handleSave}
-          loading={loading}
-          style={styles.saveButton}
-          icon="check"
-          contentStyle={{ flexDirection: 'row-reverse' }}
-        >
-          Add
-        </PaperButton>
-      </ScrollView>
-      <AlertModal
-        visible={alert.visible}
-        title={alert.title}
-        message={alert.message}
-        type={alert.type}
-        confirmText="OK"
-        onConfirm={alert.onClose ? alert.onClose : () => setAlert(a => ({ ...a, visible: false }))}
-      />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalFullHeight: {
+    justifyContent: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    minHeight: 320,
+    maxHeight: '90%',
+  },
+  modalContentFullHeight: {
+    borderRadius: 0,
+    minHeight: '100%',
+    maxHeight: '100%',
+    paddingTop: 32,
+    paddingBottom: 32,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F7F8FA',

@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     fontSize: 14,
     color: '#8E8E93',
+  
   },
   separator: {
     marginHorizontal: theme.spacing.xs,

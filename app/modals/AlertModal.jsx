@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 // ...existing code...
-import { Animated, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Animated, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import theme from '../config/theme';
 
@@ -68,33 +68,50 @@ const AlertModal = ({ visible, title, message, confirmText = 'OK', cancelText, o
       animationType="fade"
       onRequestClose={onCancel || onConfirm}
     >
-      <TouchableWithoutFeedback onPress={onCancel || onConfirm}>
-        <View style={styles.overlay}>
-          <Animated.View style={[styles.card, { borderLeftColor: borderColor, transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}> 
-            <View style={styles.headerRow}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name={iconName} size={24} color={iconColor} />
-              </View>
-              <Text style={[styles.heading, { color: headerColor }]}>{title}</Text>
-              <TouchableOpacity onPress={onConfirm} style={styles.closeBtn}>
-                <MaterialIcons name="close" size={24} color={theme.colors.tertiary} />
-              </TouchableOpacity>
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.card, { borderLeftColor: borderColor, opacity: opacityAnim }]}> 
+          <View style={styles.headerRow}>
+            <View style={styles.iconCircle}>
+              <MaterialIcons name={iconName} size={24} color={iconColor} />
             </View>
-            <Text style={styles.subtitle}>{message}</Text>
-          </Animated.View>
-        </View>
-      </TouchableWithoutFeedback>
+            <Text style={[styles.heading, { color: headerColor }]}>{title}</Text>
+            <TouchableOpacity onPress={onCancel} style={styles.closeBtn}>
+              <MaterialIcons name="close" size={24} color={theme.colors.tertiary} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.subtitle}>{message}</Text>
+          <View style={styles.buttonRow}>
+            {cancelText && (
+              <TouchableOpacity style={styles.dismissBtn} onPress={onCancel}>
+                <Text style={styles.dismissText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.confirmBtn, isWarning && styles.confirmBtnWarning]}
+              onPress={onConfirm}
+            >
+              <Text style={[styles.confirmText, isWarning && styles.confirmTextWarning]}>{confirmText}</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
     </Modal>
+  
   );
 };
 
 const styles = StyleSheet.create({
   // learnBtn and learnText removed
   overlay: {
-    flex: 1,
-    justifyContent: 'flex-start',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 55, // Adjusted to avoid overlap with status bar
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 9999,
   },
   card: {
     borderRadius: 12,
@@ -147,7 +164,48 @@ const styles = StyleSheet.create({
     marginLeft: 39, // Align with icon
     width: '80%',
   },
-  // buttonRow, dismissBtn, dismissText removed
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 16,
+  },
+  confirmBtn: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    marginLeft: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+  },
+  confirmBtnWarning: {
+    backgroundColor: '#fff',
+    borderColor: '#FDCD0F',
+    borderWidth: 2,
+  },
+  confirmText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Poppins-Bold',
+  },
+  confirmTextWarning: {
+    color: theme.colors.tertiary,
+    fontSize: 15,
+    fontFamily: 'Poppins-Bold',
+  },
+  dismissBtn: {
+    backgroundColor: '#eee',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+  },
+  dismissText: {
+    color: theme.colors.tertiary,
+    fontSize: 15,
+    fontFamily: 'Poppins-Regular',
+  },
 });
 
 export default AlertModal;

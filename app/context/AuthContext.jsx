@@ -14,16 +14,25 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading] = useState(false);
 
-  // Simple local login for admin and staff
-  const login = async (email, password) => {
-    if (email === 'admin' && password === 'admin123') {
-      setUser({ email: 'admin', name: 'Admin', role: 'admin' });
-      return { success: true };
-    } else if (email === 'staff' && password === 'staff123') {
-      setUser({ email: 'staff', name: 'Staff', role: 'staff' });
-      return { success: true };
-    } else {
-      return { success: false, error: 'Invalid credentials' };
+  // Login using backend API
+  const login = async (username, password) => {
+    try {
+      const response = await fetch('http://192.168.18.170:5000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        return { success: true };
+      } else {
+        return { success: false, error: data.message || 'Invalid credentials' };
+      }
+    } catch (err) {
+      return { success: false, error: 'Network error' };
     }
   };
 

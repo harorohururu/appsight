@@ -5,15 +5,12 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View 
 import { HelperText, Button as PaperButton, Text, TextInput } from 'react-native-paper';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Header from '../components/Header';
+import { API_URL } from '../config/config';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 import AlertModal from './AlertModal';
 
-const MOCK_LANDMARK_TYPES = [
-  { type_id: 1, type_name: 'Hotel' },
-  { type_id: 2, type_name: 'Resort' },
-  { type_id: 3, type_name: 'Church' },
-];
+// Remove mock types
 
 const EditLandmarkModal = ({ route }) => {
   const navigation = useNavigation();
@@ -32,7 +29,7 @@ const EditLandmarkModal = ({ route }) => {
     value: '',
     $id: null,
   });
-  const [landmarkTypes, setLandmarkTypes] = useState(MOCK_LANDMARK_TYPES);
+  const [landmarkTypes, setLandmarkTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ visible: false, title: '', message: '', type: 'error' });
@@ -48,15 +45,57 @@ const EditLandmarkModal = ({ route }) => {
   const contactValueRef = useRef(null);
 
   useEffect(() => {
-    // Simulate fetching types and contact
-    setLandmarkTypes(MOCK_LANDMARK_TYPES);
+    // Fetch landmark types from backend
+    const fetchTypes = async () => {
+      try {
+        const res = await fetch(`${API_URL}/landmark_type`);
+        const data = await res.json();
+        console.log('[EditLandmarkModal] Fetched landmark types:', data);
+        setLandmarkTypes(data);
+      } catch (err) {
+        console.error('[EditLandmarkModal] Error fetching landmark types:', err);
+        setLandmarkTypes([]);
+      }
+    };
+    fetchTypes();
     if (existingLandmark?.landmark_type) {
       setFormData(f => ({ ...f, landmark_type: existingLandmark.landmark_type }));
     }
-    // Simulate contact fetch
-    if (existingLandmark?.info_id) {
-      // You can set a mock contact here if needed
-    }
+    // Fetch contact person for this landmark
+    const fetchContact = async () => {
+      if (existingLandmark?.info_id) {
+        console.log('[EditLandmarkModal] Fetching contacts for landmark_info:', existingLandmark.info_id);
+        try {
+          const res = await fetch(`${API_URL}/contacts?landmark_info=${existingLandmark.info_id}`);
+          const data = await res.json();
+          console.log('[EditLandmarkModal] Contacts fetch result:', data);
+          if (Array.isArray(data) && data.length > 0) {
+            const contact = data[0];
+            let contact_type = '';
+            let value = '';
+            if (contact.email) {
+              contact_type = 'email';
+              value = contact.email;
+            } else if (contact.phone) {
+              contact_type = 'phone';
+              value = contact.phone;
+            } else if (contact.telephone) {
+              contact_type = 'telephone';
+              value = contact.telephone;
+            }
+            setContactPerson({
+              name: contact.name || '',
+              contact_type,
+              value,
+              $id: contact.contact_id || null,
+            });
+          }
+        } catch (_err) {
+          // fallback: leave contact empty
+        }
+      }
+    };
+    fetchContact();
   }, [existingLandmark]);
 
   const requiresRooms = () => {
@@ -120,20 +159,61 @@ const EditLandmarkModal = ({ route }) => {
   }, [contactPerson, contactPersonOriginal]);
 
   const handleSave = async () => {
+    console.log('[EditLandmarkModal] handleSave called');
     if (!isFormChanged()) {
+      console.log('[EditLandmarkModal] No changes detected', { formData, contactPerson });
       setAlert({ visible: true, title: 'No Changes', message: 'No changes have been made.', type: 'info' });
       return;
     }
     if (!validateForm()) {
+      console.log('[EditLandmarkModal] Validation failed', { formData, contactPerson, errors });
       setAlert({ visible: true, title: 'Validation Error', message: 'Please fill all required fields', type: 'error' });
       return;
     }
     setLoading(true);
-    // Simulate editing landmark and contact locally
-    setTimeout(() => {
+    try {
+      let contactPayload = null;
+      if (contactPerson.name && contactPerson.contact_type && contactPerson.value) {
+        contactPayload = {
+          name: contactPerson.name,
+          contact_type: contactPerson.contact_type,
+          value: contactPerson.value
+        };
+      }
+      const payload = {
+        name: formData.name,
+        landmark_type: formData.landmark_type,
+        address: formData.address,
+        total_rooms: formData.total_rooms,
+        contact_person: contactPayload,
+      };
+      console.log('[EditLandmarkModal] Sending PUT /landmarks payload:', payload);
+      const res = await fetch(`${API_URL}/landmarks/${formData.info_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setLoading(false);
+        console.log('[EditLandmarkModal] Landmark updated successfully');
+        navigation.replace('landmarks');
+      } else {
+        setLoading(false);
+        let errorMsg = 'Failed to update landmark.';
+        try {
+          const errorData = await res.json();
+          if (errorData.details) errorMsg += `\nReason: ${errorData.details}`;
+        } catch {}
+        console.error('[EditLandmarkModal] Error updating landmark:', errorMsg);
+        setAlert({ visible: true, title: 'Error', message: errorMsg, type: 'error' });
+      }
+    } catch (err) {
       setLoading(false);
-      navigation.replace('landmarks');
-    }, 800);
+      console.error('[EditLandmarkModal] Network error:', err);
+      setAlert({ visible: true, title: 'Error', message: 'Network error.', type: 'error' });
+    }
   };
 
   // Progressive validation: validate onBlur for each field
@@ -208,17 +288,8 @@ const EditLandmarkModal = ({ route }) => {
               onValueChange={value => {
                 setFormData({ ...formData, landmark_type: value });
                 setTouched(t => ({ ...t, landmark_type: true }));
-                if (!value) {
-                  setErrors(e => ({ ...e, landmark_type: 'Required' }));
-                } else {
-                  setErrors(e => ({ ...e, landmark_type: undefined }));
-                }
               }}
               style={{ minHeight: 44, height: 'auto' }}
-              onBlur={() => {
-                setTouched(t => ({ ...t, landmark_type: true }));
-                if (!formData.landmark_type) setErrors(e => ({ ...e, landmark_type: 'Required' }));
-              }}
             >
               <Picker.Item label="Select type..." value="" color="#aaa" />
               {landmarkTypes.map(type => (
@@ -226,9 +297,6 @@ const EditLandmarkModal = ({ route }) => {
               ))}
             </Picker>
           </View>
-          {!!errors.landmark_type && (touched.landmark_type || loading) && (
-            <HelperText type="error" visible style={styles.helperText}>{errors.landmark_type}</HelperText>
-          )}
           <Text style={styles.label}>Address</Text>
           <TextInput
             ref={addressRef}
@@ -237,8 +305,6 @@ const EditLandmarkModal = ({ route }) => {
             onBlur={() => handleBlur('address')}
             style={styles.input}
             mode="outlined"
-            multiline={false}
-            contentStyle={{ justifyContent: 'center' }}
             error={!!errors.address && (touched.address || loading)}
             placeholder="Street, City, Country"
             left={<TextInput.Icon icon={() => <MaterialIcons name="location-on" size={20} color="#888" />} />}

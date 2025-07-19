@@ -49,6 +49,7 @@
     "react-native": "0.79.5",
     "react-native-chart-kit": "^6.12.0",
     "react-native-gesture-handler": "~2.24.0",
+    "react-native-linear-gradient": "^2.8.3",
     "react-native-maps": "1.20.1",
     "react-native-paper": "^5.14.5",
     "react-native-qrcode-svg": "^6.3.15",
@@ -60,6 +61,7 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
+    "rive-react-native": "^9.3.4",
     "tamagui": "^1.130.8"
   },
   "devDependencies": {

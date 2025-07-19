@@ -1,91 +1,81 @@
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useState } from 'react';
-import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Searchbar, Text } from 'react-native-paper';
-import BottomNavigationBar from '../components/BottomNavigationBar';
-import Breadcrumbs from '../components/Breadcrumbs';
-import Header from '../components/Header';
-import theme from '../config/theme';
-import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '../context/NavigationContext';
-import AlertModal from '../modals/AlertModal';
+import { Text } from "react-native-paper";
+import BottomNavigationBar from "../components/BottomNavigationBar";
+import Header from "../components/Header";
+import { API_URL } from "../config/config";
+import theme from "../config/theme";
+import { useNavigation } from "../context/NavigationContext";
+import AlertModal from "../modals/AlertModal";
+import AddLandmarkModal from "../modals/AddLandmarkModal";
 
-
-// Sample data for demonstration
-const SAMPLE_LANDMARKS = [
-  {
-    info_id: 1,
-    name: 'St. Peter Church',
-    landmark_type: 1,
-    address: '123 Church St.',
-    total_rooms: 5,
-  },
-  {
-    info_id: 2,
-    name: 'Sunrise Resort',
-    landmark_type: 2,
-    address: '456 Beach Ave.',
-    total_rooms: 20,
-  },
-];
-
-const SAMPLE_LANDMARK_TYPES = [
-  { type_id: 1, type_name: 'Church' },
-  { type_id: 2, type_name: 'Resort' },
-];
-
-const SAMPLE_CONTACTS = [
-  { contact_id: 1, landmark_info: 1, name: 'John Doe', email: 'john@example.com', phone: '', telephone: '' },
-  { contact_id: 2, landmark_info: 2, name: 'Jane Smith', email: '', phone: '555-1234', telephone: '' },
-];
 
 const LandmarksScreen = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [landmarks, setLandmarks] = useState(SAMPLE_LANDMARKS);
-  const [filteredLandmarks, setFilteredLandmarks] = useState(SAMPLE_LANDMARKS);
-  const [contacts, setContacts] = useState(SAMPLE_CONTACTS);
-  const [deleteModal, setDeleteModal] = useState({ visible: false, id: null });
-  const [alertModal, setAlertModal] = useState({ visible: false, title: '', message: '', type: 'success', onOk: null });
-  const [filterModal, setFilterModal] = useState(false);
-  const [selectedType, setSelectedType] = useState('');
+  const [landmarks, setLandmarks] = useState([]);
+  const [filteredLandmarks, setFilteredLandmarks] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [landmarkTypes, setLandmarkTypes] = useState([]);
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query.trim() === '') {
-      setFilteredLandmarks(landmarks);
-    } else {
-      const filtered = landmarks.filter(landmark => {
-        const nameMatch = typeof landmark.name === 'string' && landmark.name.toLowerCase().includes(query.toLowerCase());
-        let typeMatch = false;
-        const typeObj = landmarkTypes.find(t => t.type_id === landmark.landmark_type);
-        if (typeObj && typeObj.type_name.toLowerCase().includes(query.toLowerCase())) {
-          typeMatch = true;
-        }
-        return nameMatch || typeMatch;
-      });
-      setFilteredLandmarks(filtered);
-    }
-  };
+  useEffect(() => {
+    // Fetch all landmarks with joined data from backend and group contacts per landmark
+    const fetchLandmarks = async () => {
+      try {
+        const res = await fetch(`${API_URL}/landmarks`);
+        const data = await res.json();
+        // Group contacts for each landmark
+        const grouped = {};
+        data.forEach((row) => {
+          if (!grouped[row.info_id]) {
+            grouped[row.info_id] = {
+              ...row,
+              contacts: [],
+            };
+          }
+          if (row.contact_id) {
+            grouped[row.info_id].contacts.push({
+              contact_id: row.contact_id,
+              name: row.contact_name,
+              email: row.email,
+              phone: row.phone,
+              telephone: row.telephone,
+            });
+          }
+        });
+        const landmarksArr = Object.values(grouped);
+        setLandmarks(landmarksArr);
+        setFilteredLandmarks(landmarksArr);
+      } catch (err) {
+        console.error("[LandmarksScreen] Error fetching landmarks:", err);
+        setLandmarks([]);
+        setFilteredLandmarks([]);
+      }
+    };
+    fetchLandmarks();
+  }, []);
+  const [deleteModal, setDeleteModal] = useState({ visible: false, id: null });
+  // Gradients always visible, no scroll logic needed
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "success",
+    onOk: null,
+  });
+  const [filterModal, setFilterModal] = useState(false);
+  const [selectedType, setSelectedType] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const handleEditLandmark = (landmark) => {
-    navigation.navigate('editLandmark', { landmark });
+    navigation.navigate("editLandmark", { landmark });
   };
 
   const handleAddLandmark = () => {
-    if (user?.role === 'admin') {
-      navigation.navigate('addLandmark');
-    } else {
-      setAlertModal({
-        visible: true,
-        title: 'Not Authorized',
-        message: 'Staff is not authorized to add landmarks.',
-        type: 'error',
-        onOk: () => setAlertModal(a => ({ ...a, visible: false }))
-      });
-    }
+    setAddModalVisible(true);
   };
 
   const handleDeleteLandmark = (id) => {
@@ -94,17 +84,52 @@ const LandmarksScreen = () => {
 
   const confirmDeleteLandmark = () => {
     if (!deleteModal.id) return;
-    setLandmarks(landmarks.filter(l => l.info_id !== deleteModal.id));
-    setFilteredLandmarks(filteredLandmarks.filter(l => l.info_id !== deleteModal.id));
-    setContacts(contacts.filter(c => c.landmark_info !== deleteModal.id));
-    setDeleteModal({ visible: false, id: null });
-    setAlertModal({
-      visible: true,
-      title: 'Landmark Deleted',
-      message: 'The landmark and its contacts were deleted successfully.',
-      type: 'success',
-      onOk: () => setAlertModal(a => ({ ...a, visible: false })),
-    });
+    fetch(`${API_URL}/landmarks/${deleteModal.id}`, {
+      method: "DELETE",
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          setLandmarks(landmarks.filter((l) => l.info_id !== deleteModal.id));
+          setFilteredLandmarks(
+            filteredLandmarks.filter((l) => l.info_id !== deleteModal.id)
+          );
+          setContacts(
+            contacts.filter((c) => c.landmark_info !== deleteModal.id)
+          );
+          setDeleteModal({ visible: false, id: null });
+          setAlertModal({
+            visible: true,
+            title: "Landmark Deleted",
+            message: "The landmark and its contacts were deleted successfully.",
+            type: "success",
+            onOk: () => setAlertModal((a) => ({ ...a, visible: false })),
+          });
+        } else {
+          let errorMsg = "Failed to delete landmark. Please try again.";
+          try {
+            const errorData = await res.json();
+            if (errorData.details) errorMsg += `\nReason: ${errorData.details}`;
+          } catch {}
+          setDeleteModal({ visible: false, id: null });
+          setAlertModal({
+            visible: true,
+            title: "Delete Failed",
+            message: errorMsg,
+            type: "error",
+            onOk: () => setAlertModal((a) => ({ ...a, visible: false })),
+          });
+        }
+      })
+      .catch((err) => {
+        setDeleteModal({ visible: false, id: null });
+        setAlertModal({
+          visible: true,
+          title: "Delete Failed",
+          message: `Failed to delete landmark.\n${err?.message || ""}`,
+          type: "error",
+          onOk: () => setAlertModal((a) => ({ ...a, visible: false })),
+        });
+      });
   };
 
   const handleFilterType = (typeId) => {
@@ -113,64 +138,98 @@ const LandmarksScreen = () => {
     if (!typeId) {
       setFilteredLandmarks(landmarks);
     } else {
-      setFilteredLandmarks(landmarks.filter(l => l.landmark_type === typeId));
+      setFilteredLandmarks(landmarks.filter((l) => l.landmark_type === typeId));
     }
   };
 
-  const getTypeName = (typeId) => {
-    const type = landmarkTypes.find(t => t.type_id === typeId);
-    return type ? type.type_name : typeId;
+  // Use type_name directly from joined data
+  const getTypeName = (item) => item.type_name || item.landmark_type;
+
+  // Use contacts array grouped per landmark
+  const getLandmarkContacts = (item) => {
+    if (!item.contacts || item.contacts.length === 0) return ["None"];
+    return item.contacts
+      .map((c) => {
+        // Prefer contact_type and value fields if present
+        if (c.contact_type && c.value) {
+          return `${c.name} (${
+            c.contact_type.charAt(0).toUpperCase() + c.contact_type.slice(1)
+          }: ${c.value})`;
+        }
+        let contactType = "";
+        let contactValue = "";
+        if (c.email) {
+          contactType = "Email";
+          contactValue = c.email;
+        } else if (c.phone) {
+          contactType = "Phone";
+          contactValue = c.phone;
+        } else if (c.telephone) {
+          contactType = "Telephone";
+          contactValue = c.telephone;
+        }
+        if (!contactValue) return null;
+        return `${c.name}${
+          contactValue ? " (" + contactType + ": " + contactValue + ")" : ""
+        }`;
+      })
+      .filter(Boolean);
   };
 
-  const getLandmarkContacts = (landmark) => {
-    const relatedContacts = contacts.filter((c) => c.landmark_info === landmark.info_id);
-    return relatedContacts.map((c) => {
-      let contactDetail = '';
-      if (c.email) contactDetail = c.email;
-      else if (c.phone) contactDetail = c.phone;
-      else if (c.telephone) contactDetail = c.telephone;
-      return `${c.name}${contactDetail ? ' (' + contactDetail + ')' : ''}`;
-    });
-  };
-
-  const getLandmarkIcon = (typeId) => {
-    const type = landmarkTypes.find(t => t.type_id === typeId);
-    if (!type) return 'place';
-    const name = type.type_name.toLowerCase();
-    if (name.includes('church')) return 'church';
-    if (name.includes('hotel')) return 'hotel';
-    if (name.includes('resort')) return 'pool';
-    if (name.includes('restaurant')) return 'restaurant';
-    if (name.includes('golf')) return 'golf-course';
-    if (name.includes('park')) return 'park';
-    if (name.includes('mall')) return 'store-mall-directory';
-    if (name.includes('museum')) return 'museum';
-    if (name.includes('other')) return 'category';
-    return 'place';
+  const getLandmarkIcon = (item) => {
+    const name = (item.type_name || "").toLowerCase();
+    if (name.includes("church")) return "church";
+    if (name.includes("hotel")) return "hotel";
+    if (name.includes("resort")) return "pool";
+    if (name.includes("restaurant")) return "restaurant";
+    if (name.includes("golf")) return "golf-course";
+    if (name.includes("park")) return "park";
+    if (name.includes("mall")) return "store-mall-directory";
+    if (name.includes("museum")) return "museum";
+    if (name.includes("other")) return "category";
+    return "place";
   };
 
   const renderLandmarkCard = ({ item }) => (
     <View style={styles.landmarkCardModern}>
       <View style={styles.landmarkCardHeader}>
         <View style={styles.landmarkIconCircle}>
-          <MaterialIcons name={getLandmarkIcon(item.landmark_type)} size={22} color={theme.colors.primary} />
+          <MaterialIcons
+            name={getLandmarkIcon(item)}
+            size={22}
+            color={theme.colors.primary}
+          />
         </View>
         <View className={styles.flex1}>
           <Text style={styles.landmarkName}>{item.name}</Text>
-          <Text style={styles.landmarkType}>{getTypeName(item.landmark_type)}</Text>
+          <Text style={styles.landmarkType}>{getTypeName(item)}</Text>
         </View>
       </View>
       <View style={styles.infoRow}>
-        <MaterialIcons name="location-on" size={16} color={theme.colors.primary} style={styles.infoIcon} />
-        <Text style={styles.landmarkAddress}>{item.address}</Text>
+        <MaterialIcons
+          name="location-on"
+          size={16}
+          color={theme.colors.primary}
+          style={styles.infoIcon}
+        />
+        <Text style={styles.landmarkAddress}>
+          {item.address ? item.address : "None"}
+        </Text>
       </View>
       {/* Show contacts if available */}
       {getLandmarkContacts(item).length > 0 && (
         <View style={styles.infoRow}>
-          <MaterialIcons name="person" size={16} color={theme.colors.primary} style={styles.infoIcon} />
+          <MaterialIcons
+            name="person"
+            size={16}
+            color={theme.colors.primary}
+            style={styles.infoIcon}
+          />
           <View style={styles.contactsList}>
             {getLandmarkContacts(item).map((contact, idx) => (
-              <Text key={idx} style={styles.contactText}>{contact}</Text>
+              <Text key={idx} style={styles.contactText}>
+                {contact}
+              </Text>
             ))}
           </View>
         </View>
@@ -178,113 +237,177 @@ const LandmarksScreen = () => {
       {/* Show total rooms below contacts if available */}
       {item.total_rooms && (
         <View style={styles.infoRow}>
-          <MaterialIcons name="hotel" size={16} color={theme.colors.primary} style={styles.infoIcon} />
+          <MaterialIcons
+            name="hotel"
+            size={16}
+            color={theme.colors.primary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.roomsText}>{item.total_rooms} rooms</Text>
         </View>
       )}
       <View style={styles.cardFooter}>
-        {user?.role === 'admin' && (
-          <View style={styles.cardActions}>
-            <Text onPress={() => handleEditLandmark(item)} style={styles.editText}>Edit</Text>
-            <Text onPress={() => handleDeleteLandmark(item.info_id)} style={styles.deleteText}>Delete</Text>
-          </View>
-        )}
+        <View style={styles.cardActions}>
+          <Text
+            onPress={() => handleEditLandmark(item)}
+            style={styles.editText}
+          >
+            Edit
+          </Text>
+          <Text
+            onPress={() => handleDeleteLandmark(item.info_id)}
+            style={styles.deleteText}
+          >
+            Delete
+          </Text>
+        </View>
       </View>
     </View>
   );
 
+  const [menuVisible, setMenuVisible] = useState(null);
+
   return (
-    <View style={styles.container}>
-      <Header 
-        title="Manage Landmarks" 
-        showBackButton
+    <View style={styles.screenBackground}>
+      <Header
+        title="Landmark"
         navigation={navigation}
-        onBackPress={() => navigation.replace('dashboard')}
+        onBackPress={() => navigation.replace("dashboard")}
       />
-      <Breadcrumbs items={['Dashboard', 'Landmarks']} />
-      <View style={styles.content}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 10,
-          }}
-        >
-          <View style={{
-            flex: 1,
-            marginTop: 8,
-            marginBottom: 5,
-            backgroundColor: '#ffffff',
-            borderRadius: 16,
-            paddingLeft: 4,
-            paddingRight: 4,
-            borderWidth: 1,
-            borderColor: '#E0E0E0',
-          }}>
-            <Searchbar
-              placeholder="Search landmarks..."
-              placeholderTextColor="#8E8E93"
-              onChangeText={handleSearch}
-              value={searchQuery}
-              style={[styles.searchbar, { backgroundColor: 'transparent', borderWidth: 0 }]}
+      <View style={styles.contentBackground}>
+        <View style={styles.optionsRow}>
+          <View style={styles.searchWrapper}>
+            <MaterialIcons
+              name="search"
+              size={22}
+              color={theme.colors.tertiary}
+              style={styles.searchIconLeft}
+            />
+            <TextInput
+              style={styles.searchInputWide}
+              placeholder="Search..."
+              placeholderTextColor={theme.colors.tertiary}
+              editable={true}
+              value={searchText}
+              onChangeText={text => {
+                setSearchText(text);
+                if (!text) {
+                  setFilteredLandmarks(landmarks);
+                } else {
+                  setFilteredLandmarks(
+                    landmarks.filter(l =>
+                      (l.name && l.name.toLowerCase().includes(text.toLowerCase())) ||
+                      (l.address && l.address.toLowerCase().includes(text.toLowerCase()))
+                    )
+                  );
+                }
+              }}
+              returnKeyType="search"
             />
           </View>
-          <TouchableOpacity style={[styles.addButtonIconOnly, { width: 44, height: 44, marginLeft: 0 }]} onPress={() => setFilterModal(true)} activeOpacity={0.7}>
-            <MaterialIcons name="filter-list" size={22} color={theme.colors.onPrimary} />
-          </TouchableOpacity>
-          {user?.role === 'admin' && (
-            <TouchableOpacity style={[styles.addButtonIconOnly, { width: 44, height: 44, marginLeft: 0 }]} onPress={handleAddLandmark} activeOpacity={0.7}>
-              <MaterialIcons name="add" size={22} color={theme.colors.onPrimary} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <View style={styles.headerRow}>
-          <Text style={styles.resultCount}>
-              {filteredLandmarks.length} landmark{filteredLandmarks.length !== 1 ? 's' : ''} found
-          </Text>
-        </View>
-        <View style={styles.grid1Container}>
-          {filteredLandmarks.map((item) => (
-            <View key={item.info_id} style={styles.grid1CardWrapper}>
-              {renderLandmarkCard({ item })}
-            </View>
-          ))}
-        </View>
-        {/* Filter Modal */}
-        <Modal
-          visible={filterModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setFilterModal(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={styles.filterModal}>
-              <View style={styles.filterModalHeader}>
-                <Text style={styles.filterTitle}>Filter by Type</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.filterOption, !selectedType && styles.filterOptionSelected]}
-                onPress={() => handleFilterType('')}
-              >
-                <Text style={[styles.filterOptionText, !selectedType && styles.filterOptionTextSelected]}>All</Text>
-              </TouchableOpacity>
-              {landmarkTypes.map(type => (
-                <TouchableOpacity
-                  key={type.type_id}
-                  style={[styles.filterOption, selectedType === type.type_id && styles.filterOptionSelected]}
-                  onPress={() => handleFilterType(type.type_id)}
-                >
-                  <Text style={[styles.filterOptionText, selectedType === type.type_id && styles.filterOptionTextSelected]}>{type.type_name}</Text>
-                </TouchableOpacity>
-              ))}
-              {/* X button to close modal */}
-              <TouchableOpacity style={styles.filterModalCloseIcon} onPress={() => setFilterModal(false)}>
-                <MaterialIcons name="close" size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.iconGroup}>
+            <MaterialIcons
+              name="add"
+              size={32}
+              color={theme.colors.primary}
+              style={styles.filterIcon}
+              onPress={handleAddLandmark}
+            />
+            <MaterialIcons
+              name="tune"
+              size={32}
+              color={theme.colors.primary}
+              style={styles.filterIcon}
+              onPress={() => setFilterModal(true)}
+            />
           </View>
-        </Modal>
+        </View>
+        <View style={{ flex: 1 }}>
+          {/* Top Gradient Overlay (smooth fade, same as bottom) */}
+          <LinearGradient
+            colors={[
+              "#fdfffc",
+              "rgba(253,255,252,0.8)",
+              "rgba(253,255,252,0.5)",
+              "rgba(253,255,252,0.2)",
+              "rgba(253,255,252,0)",
+            ]}
+            style={styles.topGradient}
+            pointerEvents="none"
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+
+          {/* Top Gradient Overlay removed as requested */}
+          {/* Landmark List */}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.landmarkListContent}
+          >
+            {filteredLandmarks.length === 0
+              ? null
+              : filteredLandmarks.map((item) => (
+                  <View key={item.info_id} style={styles.cardContainer}>
+                    <View style={styles.cardHeaderRow}>
+                      <View style={styles.cardIconCircle}>
+                        <MaterialIcons
+                          name={getLandmarkIcon(item)}
+                          size={32}
+                          color={theme.colors.secondary}
+                        />
+                      </View>
+                      <View style={styles.cardHeaderTextWrapper}>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.cardSubtitle}>{getTypeName(item)}</Text>
+                        <Text style={styles.cardMeta}>{item.address || "None"}</Text>
+                      </View>
+                      <View style={styles.cardMenuIconWrapper}>
+                        <TouchableOpacity onPress={() => setMenuVisible(item.info_id)}>
+                          <MaterialIcons name="more-vert" size={22} color={theme.colors.tertiary} />
+                        </TouchableOpacity>
+                        {menuVisible === item.info_id && (
+                          <View style={styles.cardMenuDropdown}>
+                            <TouchableOpacity onPress={() => { setMenuVisible(null); handleEditLandmark(item); }}>
+                              <Text style={styles.cardMenuItem}>Edit</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => { setMenuVisible(null); handleDeleteLandmark(item.info_id); }}>
+                              <Text style={styles.cardMenuItemDelete}>Delete</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.cardInfoRow}>
+                      <Text style={styles.cardInfoLabel}>Contacts:</Text>
+                      <Text style={styles.cardInfoValue}>{getLandmarkContacts(item).join(", ")}</Text>
+                    </View>
+                    {item.total_rooms && (
+                      <View style={styles.cardInfoRow}>
+                        <Text style={styles.cardInfoLabel}>Rooms:</Text>
+                        <Text style={styles.cardInfoValue}>{item.total_rooms}</Text>
+                      </View>
+                    )}
+                    <View style={styles.cardFooterRow}>
+                      <Text style={styles.cardDate}>{formatDateTime(item.updated_at || item.created_at)}</Text>
+                    </View>
+                  </View>
+                ))}
+          </ScrollView>
+          {/* Bottom Gradient Overlay (transparent to white, always visible, more white, taller) */}
+          <LinearGradient
+            colors={[
+              "rgba(253,255,252,0)", // fully transparent
+              "rgba(253,255,252,0.2)", // slight opacity
+              "rgba(253,255,252,0.5)", // medium opacity
+              "rgba(253,255,252,0.8)", // almost solid
+              "#fdfffc", // solid color
+            ]}
+            style={styles.bottomGradient}
+            pointerEvents="none"
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        </View>
       </View>
       <BottomNavigationBar navigation={navigation} currentRoute="landmarks" />
       <AlertModal
@@ -303,221 +426,323 @@ const LandmarksScreen = () => {
         message={alertModal.message}
         confirmText="OK"
         type={alertModal.type}
-        onConfirm={alertModal.onOk ? alertModal.onOk : () => setAlertModal(a => ({ ...a, visible: false }))}
+        onConfirm={
+          alertModal.onOk
+            ? alertModal.onOk
+            : () => setAlertModal((a) => ({ ...a, visible: false }))
+        }
+      />
+      <AddLandmarkModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        animationType="slide"
+        fullScreen={true}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.md,
+  optionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 12,
+    paddingHorizontal: 2,
+    gap: 0,
     width: '100%',
   },
-  landmarkCardModern: {
-    width: '100%',
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginVertical: theme.spacing.xs,
-    marginBottom: 10,
-    alignItems: 'flex-start',
+  searchWrapper: {
+    position: 'relative',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    boxSizing: 'border-box',
+    flex: 1,
+    marginRight: 12,
+    minWidth: 0,
   },
-    filterModalCloseIcon: {
+  searchIconLeft: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    left: 10,
+    top: 7,
+    zIndex: 2,
+  },
+  searchInputWide: {
+    height: 38,
+    width: '100%',
+    minWidth: 220,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: 18,
+    paddingLeft: 40,
+    paddingRight: 16,
+    color: theme.colors.tertiary,
+    fontFamily: 'Poppins-Regular',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.tertiary,
+  },
+  topGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 20,
     zIndex: 10,
+    width: "100%",
+    pointerEvents: "none",
+  },
+  bottomGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    zIndex: 10,
+    width: "100%",
+    pointerEvents: "none",
+  },
+  screenBackground: {
+    flex: 1,
+    backgroundColor: theme.colors.primary,
+  },
+  contentBackground: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: theme.spacing.md,
+  },
+  filterIcon: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  addLandmarkButton: {
     padding: 4,
   },
-  resultCount: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    color: '#8E8E93',
-    marginBottom: theme.spacing.sm,
-    letterSpacing: 0.2,
-  },  
+  landmarkListContainer: {
+    flex: 1,
+    width: "100%",
+  },
+  landmarkListContent: {
+    paddingTop: 10,
+    paddingBottom: 90,
+  },
+  landmarkCardModern: {
+    backgroundColor: theme.colors.secondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.tertiary,
+    marginBottom: 0,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   landmarkCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-    width: '100%',
-    gap: 12,
+    marginBottom: 8,
   },
-  addButtonIconOnly: {
+  landmarkIconCircle: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: theme.colors.primary,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 0
-  },
-  landmarkName: {
-    fontSize: 18,
-    fontFamily: 'Poppins-SemiBold',
-    color: theme.colors.primary,
-    marginBottom: 0,
-  },
-  landmarkType: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: 0,
-  },
-  landmarkAddress: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: 0,
-    marginTop: 1,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-    width: '100%',
-    paddingLeft: 0,
-    marginLeft: 0,
-    justifyContent: 'space-between',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'space-between',
-    marginLeft: 0,
-    paddingLeft: 0,
-  },
-  roomsText: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginRight: 0,
-    paddingLeft: 0,
-    marginLeft: 0,
-  },
-  flexRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginRight: 12,
   },
   flex1: {
     flex: 1,
   },
-  marginBottomMd: {
-    marginBottom: theme.spacing.md,
+  landmarkName: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    color: theme.colors.tertiary,
   },
-  marginTop4: {
-    marginTop: 4,
+  landmarkType: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 13,
+    color: theme.colors.tertiary,
+    marginTop: 2,
   },
-  contactsLabel: {
+  landmarkAddress: {
+    fontFamily: 'Poppins-Regular',
     fontSize: 12,
-    color: '#666',
-  },
-  contactText: {
-    fontSize: 12,
-    color: '#444',
-  },
-  editText: {
-    marginRight: 0,
-    color: theme.colors.primary,
-    fontWeight: 'bold',
-  },
-  deleteText: {
-    color: theme.colors.error,
-    fontWeight: 'bold',
+    color: theme.colors.tertiary,
+    marginTop: 2,
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 2,
-    marginBottom: 2,
-    gap: 4,
+    alignItems: 'center',
+    marginBottom: 4,
   },
   infoIcon: {
-    marginTop: 2,
-    marginRight: 6,
+    marginRight: 8,
   },
   contactsList: {
-    flex: 1,
     flexDirection: 'column',
-    gap: 0,
   },
-  // Filter modal styles
-  filterModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
+  contactText: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 12,
+    color: theme.colors.tertiary,
   },
-  filterModalCenteredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  roomsText: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 12,
+    color: theme.colors.tertiary,
   },
-  filterModal: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    minWidth: 220,
-    maxWidth: 260,
-    width: '90%',
-    alignItems: 'center',
-    elevation: 4,
+  cardFooter: {
+    marginTop: 8,
   },
-  filterModalHeader: {
+  cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+  },
+  editText: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 14,
+    color: theme.colors.primary,
+    marginRight: 16,
+  },
+  deleteText: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 14,
+    color: theme.colors.error,
+  },
+  optionsRowAligned: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 12,
+    paddingHorizontal: theme.spacing.md,
     width: '100%',
-    marginBottom: 10,
+  },
+  iconGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 12,
+  },
+  cardContainer: {
+    backgroundColor: theme.colors.secondary,
+    borderBottomWidth: 2,
+    borderColor: theme.colors.shadow,
+    marginBottom: 2,
+    paddingVertical: 5,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardIconCircle: {
+    width: 44,
+    height: 44,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderRadius: 22,
+  },
+  cardHeaderTextWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    color: theme.colors.tertiary,
+  },
+  cardSubtitle: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 13,
+    color: theme.colors.tertiary,
+    marginTop: 2,
+  },
+  cardMeta: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 12,
+    color: theme.colors.tertiary,
+    marginTop: 2,
+  },
+  cardMenuIconWrapper: {
+    marginLeft: 8,
     position: 'relative',
   },
-  filterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.primary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  filterOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 28,
+    right: 0,
+    backgroundColor: '#fff',
     borderRadius: 8,
-    width: 180,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 100,
+    minWidth: 90,
+    paddingVertical: 4,
   },
-  filterOptionSelected: {
-    backgroundColor: theme.colors.primary,
-  },
-  filterOptionText: {
-    fontSize: 15,
+  cardMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    fontFamily: 'Poppins-Bold',
     color: theme.colors.primary,
-    fontWeight: '500',
+    fontSize: 14,
   },
-  filterCloseText: {
-    color: '#8B0000',
-    fontWeight: '600',
-    fontSize: 15,
+  cardMenuItemDelete: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    fontFamily: 'Poppins-Bold',
+    color: theme.colors.error,
+    fontSize: 14,
   },
-  filterOptionTextSelected: {
-    color: '#fff',
+  cardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardInfoLabel: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 12,
+    color: theme.colors.tertiary,
+    marginRight: 4,
+  },
+  cardInfoValue: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 12,
+    color: theme.colors.tertiary,
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  cardDate: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 12,
+    color: theme.colors.tertiary,
+  },
+  modalFullScreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
-const landmarkTypes = SAMPLE_LANDMARK_TYPES;
+const formatDateTime = (dateString) => {
+  if (!dateString) return '';
+  const dateObj = new Date(dateString);
+  const date = dateObj.toLocaleDateString();
+  const time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${date} ${time}`;
+};
+
+// landmarkTypes now comes from state, fetched from backend
 
 export default LandmarksScreen;

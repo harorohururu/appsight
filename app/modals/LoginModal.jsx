@@ -23,6 +23,7 @@ import { useNavigation } from '../context/NavigationContext';
 import AlertModal from './AlertModal';
 
 const LoginModal = ({ visible, onClose, termsVisible, privacyVisible, setTermsVisible, setPrivacyVisible }) => {
+  // ...existing code...
   const [alertVisible, setAlertVisible] = useState(false);
 
   // Clear password validation error when alert modal closes
@@ -186,7 +187,9 @@ const LoginModal = ({ visible, onClose, termsVisible, privacyVisible, setTermsVi
     }
     if (!valid) return;
     setLoading(true);
+    console.log('Login attempt (UI):', { username: username.trim(), password });
     const result = await login(username.trim(), password);
+    console.log('Login result (UI):', result);
     setLoading(false);
     if (result.success) {
       navigation.replace('dashboard');
@@ -217,6 +220,7 @@ const LoginModal = ({ visible, onClose, termsVisible, privacyVisible, setTermsVi
   };
 
   if (!showing) return null;
+
 
   // Modal position logic
   // If keyboard is visible and an input is focused, move modal up just enough to keep input and error visible
